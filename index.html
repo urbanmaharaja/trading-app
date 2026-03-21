@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <link rel="manifest" href="manifest.json">
   <title>Trading Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -313,6 +314,10 @@ window.open("https://wa.me/?text="+encodeURIComponent(text));
 }
 
 </script>
-
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+</script>
 </body>
 </html>
