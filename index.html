@@ -5,44 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    body { font-family: Arial; padding:20px; background:#f5f5f5; }
-    h2 { text-align:center; }
+    body { 
+      font-family: Arial; 
+      padding:20px; 
+      background:#f0f0f0; 
+      color:#000;
+    }
+
+    h2 { 
+      text-align:center; 
+      font-size:24px;
+      margin-bottom:10px;
+    }
 
     .container {
-      max-width:900px;
+      max-width:950px;
       margin:auto;
       background:white;
       padding:15px;
       border-radius:10px;
+      border:2px solid #000;
     }
 
     input, select, button {
       width:100%;
-      padding:10px;
-      margin:5px 0;
+      padding:12px;
+      margin:6px 0;
+      font-size:16px;
+      border:2px solid #000;
+      border-radius:6px;
     }
 
-    .tabs { display:flex; margin-bottom:10px; }
-    .tab-btn { flex:1; padding:10px; background:#ddd; }
-    .active { background:#007bff; color:white; }
+    .tabs { 
+      display:flex; 
+      gap:10px;
+      margin-bottom:10px; 
+    }
+
+    .tab-btn { 
+      flex:1; 
+      padding:12px; 
+      background:#ccc; 
+      font-weight:bold;
+      border:2px solid #000;
+    }
+
+    .active { 
+      background:#000; 
+      color:white; 
+    }
 
     table {
       width:100%;
       border-collapse:collapse;
       margin-top:10px;
-      font-size:13px;
+      font-size:14px;
     }
 
     th, td {
-      border:1px solid #ccc;
-      padding:6px;
+      border:2px solid #000;
+      padding:8px;
       text-align:center;
     }
 
-    th { background:#eee; }
+    th { 
+      background:#ddd; 
+      font-size:15px;
+    }
 
     .profit { color:green; font-weight:bold; }
     .loss { color:red; font-weight:bold; }
+
+    .filters {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .filters select {
+      flex:1;
+    }
+
   </style>
 </head>
 
@@ -88,6 +131,8 @@
 <!-- DASHBOARD -->
 <div id="dashboard" style="display:none;">
 
+<div class="filters">
+
 <select id="filter" onchange="load()">
 <option value="all">All</option>
 <option value="today">Today</option>
@@ -96,6 +141,16 @@
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
 </select>
+
+<!-- ✅ NEW ACCOUNT FILTER -->
+<select id="accountFilter" onchange="load()">
+<option value="all">All Accounts</option>
+<option value="Zerodha">Zerodha</option>
+<option value="Groww">Groww</option>
+<option value="Kotak">Kotak</option>
+</select>
+
+</div>
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
@@ -157,7 +212,7 @@ function showDashboard(){
   load();
 }
 
-// Save (unchanged)
+// Save (UNCHANGED)
 function save(){
 
 let bQty = Number(buyQty.value);
@@ -230,6 +285,7 @@ let html = "";
 filteredData = [];
 
 let filterType = filter.value;
+let accountType = accountFilter.value;
 let now = new Date();
 
 data.reverse();
@@ -238,9 +294,11 @@ data.forEach(row=>{
 
 let date = new Date(row[4]);
 let pnl = Number(row[12]||0);
+let account = row[1]; // ✅ account column
 
 let match = true;
 
+// Date filters
 if(filterType==="today"){
   match = date.toDateString() === now.toDateString();
 }
@@ -255,6 +313,13 @@ if(filterType==="profit"){
 }
 if(filterType==="loss"){
   match = pnl < 0;
+}
+
+// ✅ ACCOUNT FILTER
+if(accountType !== "all"){
+  if(account !== accountType){
+    match = false;
+  }
 }
 
 if(!match) return;
@@ -290,7 +355,7 @@ rows.innerHTML = html;
 
 }
 
-// WhatsApp
+// WhatsApp (unchanged)
 function sendWhatsApp(){
 
 if(filteredData.length===0){
