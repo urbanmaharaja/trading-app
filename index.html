@@ -1,46 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="manifest" href="manifest.json">
   <title>Trading Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+
   <style>
-    body { font-family: Arial; padding:20px; background:#f5f5f5; }
-    h2 { text-align:center; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+      margin:0;
+      background:#f4f6f9;
+    }
+
+    h2 {
+      text-align:center;
+      padding:15px;
+      margin:0;
+      background:#0d6efd;
+      color:white;
+    }
 
     .container {
       max-width:900px;
       margin:auto;
+      padding:15px;
+    }
+
+    .tabs {
+      display:flex;
+      gap:10px;
+      margin-bottom:15px;
+    }
+
+    .tab-btn {
+      flex:1;
+      padding:12px;
+      border:none;
+      border-radius:8px;
+      background:#e9ecef;
+      font-weight:600;
+    }
+
+    .active {
+      background:#0d6efd;
+      color:white;
+    }
+
+    .card {
       background:white;
       padding:15px;
-      border-radius:10px;
+      border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom:15px;
     }
 
-    input, select, button {
+    input, select {
       width:100%;
       padding:10px;
-      margin:5px 0;
+      margin:6px 0;
+      border-radius:8px;
+      border:1px solid #ddd;
     }
 
-    .tabs { display:flex; margin-bottom:10px; }
-    .tab-btn { flex:1; padding:10px; background:#ddd; }
-    .active { background:#007bff; color:white; }
+    button {
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:8px;
+      background:#0d6efd;
+      color:white;
+      font-weight:bold;
+      margin-top:10px;
+    }
+
+    .summary {
+      font-size:18px;
+      font-weight:bold;
+      margin-bottom:10px;
+    }
 
     table {
       width:100%;
       border-collapse:collapse;
-      margin-top:10px;
       font-size:13px;
     }
 
     th, td {
-      border:1px solid #ccc;
-      padding:6px;
+      padding:8px;
+      border-bottom:1px solid #eee;
       text-align:center;
     }
 
-    th { background:#eee; }
+    th {
+      background:#f1f3f5;
+    }
 
     .profit { color:green; font-weight:bold; }
     .loss { color:red; font-weight:bold; }
@@ -59,7 +114,7 @@
 </div>
 
 <!-- FORM -->
-<div id="form">
+<div id="form" class="card">
 
 <select id="account">
 <option>Zerodha</option>
@@ -87,7 +142,7 @@
 </div>
 
 <!-- DASHBOARD -->
-<div id="dashboard" style="display:none;">
+<div id="dashboard" class="card" style="display:none;">
 
 <select id="filter" onchange="load()">
 <option value="all">All</option>
@@ -98,26 +153,17 @@
 <option value="loss">Loss</option>
 </select>
 
-<button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
+<button onclick="sendWhatsApp()">WhatsApp Summary</button>
 
-<h3 id="total"></h3>
+<div id="total" class="summary"></div>
 
 <table>
 <thead>
 <tr>
 <th>Stock</th>
-<th>Buy Date</th>
-<th>Buy Qty</th>
-<th>Buy Price</th>
-<th>Invested</th>
-<th>Sell Date</th>
-<th>Sell Qty</th>
-<th>Sell Price</th>
-<th>Sell Amount</th>
+<th>Buy</th>
+<th>Sell</th>
 <th>P&L</th>
-<th>Diff</th>
-<th>Days</th>
-<th>%</th>
 </tr>
 </thead>
 <tbody id="rows"></tbody>
@@ -129,16 +175,17 @@
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
+// API
+const API = "PASTE_YOUR_WORKING_URL_HERE";
 
 let filteredData = [];
 
-// Default dates
+// Default date
 let today = new Date().toISOString().split("T")[0];
 buyDate.value = today;
 sellDate.value = today;
 
-// Auto mapping
+// Auto symbol
 stockName.oninput = () => symbol.value = "NSE:"+stockName.value.toUpperCase();
 symbol.oninput = () => stockName.value = symbol.value.replace("NSE:","");
 
@@ -158,7 +205,7 @@ function showDashboard(){
   load();
 }
 
-// Save (unchanged)
+// Save
 function save(){
 
 let bQty = Number(buyQty.value);
@@ -213,12 +260,6 @@ fetch(API,{
 
 }
 
-// Format date
-function formatDate(d){
-  let dt = new Date(d);
-  return dt.toLocaleDateString("en-GB");
-}
-
 // Dashboard
 function load(){
 
@@ -268,18 +309,9 @@ let pnlClass = pnl >= 0 ? "profit" : "loss";
 
 html += `<tr>
 <td>${row[2]}</td>
-<td>${formatDate(row[4])}</td>
-<td>${row[5]}</td>
 <td>${row[6]}</td>
-<td>${row[7]}</td>
-<td>${formatDate(row[8])}</td>
-<td>${row[9]}</td>
 <td>${row[10]}</td>
-<td>${row[11]}</td>
 <td class="${pnlClass}">${pnl}</td>
-<td>${row[13]}</td>
-<td>${row[14]}</td>
-<td>${row[15]}</td>
 </tr>`;
 
 });
@@ -294,30 +326,26 @@ rows.innerHTML = html;
 // WhatsApp
 function sendWhatsApp(){
 
-if(filteredData.length===0){
-  alert("No data");
-  return;
-}
-
-let text = "Trading Summary\n\n";
-let total = 0;
+let text="Trading Summary\n\n";
+let total=0;
 
 filteredData.forEach(d=>{
-  text += `${d.stock} ₹${d.pnl}\n`;
-  total += d.pnl;
+  text+=`${d.stock} ₹${d.pnl}\n`;
+  total+=d.pnl;
 });
 
-text += `\nTotal: ₹${total}`;
+text+=`\nTotal: ₹${total}`;
 
 window.open("https://wa.me/?text="+encodeURIComponent(text));
 
 }
 
-</script>
-<script>
+// PWA
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js');
 }
+
 </script>
+
 </body>
 </html>
