@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Trading Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body { font-family: Arial; padding:20px; background:#f5f5f5; }
+    h2 { text-align:center; }
+
+    .container {
+      max-width:900px;
+      margin:auto;
+      background:white;
+      padding:15px;
+      border-radius:10px;
+    }
+
+    input, select, button {
+      width:100%;
+      padding:10px;
+      margin:5px 0;
+    }
+
+    .tabs { display:flex; margin-bottom:10px; }
+    .tab-btn { flex:1; padding:10px; background:#ddd; }
+    .active { background:#007bff; color:white; }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      font-size:13px;
+    }
+
+    th, td {
+      border:1px solid #ccc;
+      padding:6px;
+      text-align:center;
+    }
+
+    th { background:#eee; }
+
+    .profit { color:green; font-weight:bold; }
+    .loss { color:red; font-weight:bold; }
+  </style>
+</head>
+
+<body>
+
+<h2>Trading Tracker</h2>
+
+<div class="container">
+
+<div class="tabs">
+  <button id="tabForm" class="tab-btn active" onclick="showForm()">Add Trade</button>
+  <button id="tabDash" class="tab-btn" onclick="showDashboard()">Dashboard</button>
+</div>
+
+<!-- FORM -->
+<div id="form">
+
+<select id="account">
+<option>Zerodha</option>
+<option>Groww</option>
+<option>Kotak</option>
+</select>
+
+<input id="stockName" placeholder="Stock Name">
+<input id="symbol" placeholder="Symbol">
+
+<label>Buy Date</label>
+<input type="date" id="buyDate">
+
+<input id="buyQty" placeholder="Buy Quantity">
+<input id="buyPrice" placeholder="Buy Price">
+
+<label>Sell Date</label>
+<input type="date" id="sellDate">
+
+<input id="sellQty" placeholder="Sell Quantity">
+<input id="sellPrice" placeholder="Sell Price">
+
+<button onclick="save()">Save Trade</button>
+
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none;">
+
+<select id="filter" onchange="load()">
+<option value="all">All</option>
+<option value="today">Today</option>
+<option value="week">This Week</option>
+<option value="month">This Month</option>
+<option value="profit">Profit</option>
+<option value="loss">Loss</option>
+</select>
+
+<button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
+
+<h3 id="total"></h3>
+
+<table>
+<thead>
+<tr>
+<th>Stock</th>
+<th>Buy Date</th>
+<th>Buy Qty</th>
+<th>Buy Price</th>
+<th>Invested</th>
+<th>Sell Date</th>
+<th>Sell Qty</th>
+<th>Sell Price</th>
+<th>Sell Amount</th>
+<th>P&L</th>
+<th>Diff</th>
+<th>Days</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
+
+let filteredData = [];
+
+// Default dates
+let today = new Date().toISOString().split("T")[0];
+buyDate.value = today;
+sellDate.value = today;
+
+// Auto mapping
+stockName.oninput = () => symbol.value = "NSE:"+stockName.value.toUpperCase();
+symbol.oninput = () => stockName.value = symbol.value.replace("NSE:","");
+
+// Tabs
+function showForm(){
+  form.style.display="block";
+  dashboard.style.display="none";
+  tabForm.classList.add("active");
+  tabDash.classList.remove("active");
+}
+
+function showDashboard(){
+  form.style.display="none";
+  dashboard.style.display="block";
+  tabForm.classList.remove("active");
+  tabDash.classList.add("active");
+  load();
+}
+
+// Save (unchanged)
+function save(){
+
+let bQty = Number(buyQty.value);
+let bPrice = Number(buyPrice.value);
+let sQty = Number(sellQty.value);
+let sPrice = Number(sellPrice.value);
+
+if(!bQty || !bPrice || !sQty || !sPrice){
+  alert("Fill all fields");
+  return;
+}
+
+let invested = bQty * bPrice;
+let sellAmount = sQty * sPrice;
+let net = sellAmount - invested;
+
+let data = {
+  month:new Date(buyDate.value).toLocaleString('default',{month:'short'}),
+  account:account.value,
+  stockName:stockName.value,
+  symbol:symbol.value,
+  buyDate:buyDate.value,
+  buyQty:bQty,
+  buyPrice:bPrice,
+  invested,
+  sellDate:sellDate.value,
+  sellQty:sQty,
+  sellPrice:sPrice,
+  sellAmount,
+  net,
+  difference:sPrice-bPrice,
+  days:1,
+  percent:(net/invested)*100
+};
+
+fetch(API,{
+  method:"POST",
+  headers:{"Content-Type":"application/x-www-form-urlencoded"},
+  body:"data="+encodeURIComponent(JSON.stringify(data))
+})
+.then(res=>res.text())
+.then(res=>{
+  if(res.toLowerCase().includes("ok")){
+    alert("Saved ✅");
+    document.querySelectorAll("input").forEach(i=>{
+      if(i.type!=="date") i.value="";
+    });
+    buyDate.value = today;
+    sellDate.value = today;
+  }
+});
+
+}
+
+// Format date
+function formatDate(d){
+  let dt = new Date(d);
+  return dt.toLocaleDateString("en-GB");
+}
+
+// Dashboard
+function load(){
+
+fetch(API)
+.then(res=>res.json())
+.then(data=>{
+
+let totalVal = 0;
+let html = "";
+filteredData = [];
+
+let filterType = filter.value;
+let now = new Date();
+
+data.reverse();
+
+data.forEach(row=>{
+
+let date = new Date(row[4]);
+let pnl = Number(row[12]||0);
+
+let match = true;
+
+if(filterType==="today"){
+  match = date.toDateString() === now.toDateString();
+}
+if(filterType==="week"){
+  match = (now-date)/(1000*60*60*24) <= 7;
+}
+if(filterType==="month"){
+  match = date.getMonth()===now.getMonth();
+}
+if(filterType==="profit"){
+  match = pnl > 0;
+}
+if(filterType==="loss"){
+  match = pnl < 0;
+}
+
+if(!match) return;
+
+filteredData.push({stock:row[2], pnl});
+
+totalVal += pnl;
+
+let pnlClass = pnl >= 0 ? "profit" : "loss";
+
+html += `<tr>
+<td>${row[2]}</td>
+<td>${formatDate(row[4])}</td>
+<td>${row[5]}</td>
+<td>${row[6]}</td>
+<td>${row[7]}</td>
+<td>${formatDate(row[8])}</td>
+<td>${row[9]}</td>
+<td>${row[10]}</td>
+<td>${row[11]}</td>
+<td class="${pnlClass}">${pnl}</td>
+<td>${row[13]}</td>
+<td>${row[14]}</td>
+<td>${row[15]}</td>
+</tr>`;
+
+});
+
+total.innerText = "Total P&L: ₹" + totalVal;
+rows.innerHTML = html;
+
+});
+
+}
+
+// WhatsApp
+function sendWhatsApp(){
+
+if(filteredData.length===0){
+  alert("No data");
+  return;
+}
+
+let text = "Trading Summary\n\n";
+let total = 0;
+
+filteredData.forEach(d=>{
+  text += `${d.stock} ₹${d.pnl}\n`;
+  total += d.pnl;
+});
+
+text += `\nTotal: ₹${total}`;
+
+window.open("https://wa.me/?text="+encodeURIComponent(text));
+
+}
+
+</script>
+
+</body>
+</html>
