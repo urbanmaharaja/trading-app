@@ -1,72 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Trading Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body { font-family: Arial; padding:20px; background:#f0f0f0; }
+<style>
+body { font-family: Arial; padding:20px; background:#f0f0f0; }
 
-    .container {
-      max-width:950px;
-      margin:auto;
-      background:white;
-      padding:15px;
-      border:2px solid #000;
-      border-radius:10px;
-    }
+.container {
+  max-width:950px;
+  margin:auto;
+  background:white;
+  padding:15px;
+  border:2px solid #000;
+}
 
-    input, select, button {
-      width:100%;
-      padding:12px;
-      margin:6px 0;
-      border:2px solid #000;
-      font-size:16px;
-    }
+.tabs { display:flex; gap:10px; }
+.tab-btn { flex:1; padding:12px; background:#ccc; font-weight:bold; }
+.active { background:#000; color:white; }
 
-    .tabs { display:flex; gap:10px; }
-    .tab-btn { flex:1; padding:12px; background:#ccc; font-weight:bold; }
-    .active { background:#000; color:white; }
+input, select, button {
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border:2px solid #000;
+}
 
-    .filters { display:flex; gap:10px; flex-wrap:wrap; }
+.filters { display:flex; gap:10px; flex-wrap:wrap; }
 
-    .cardBox {
-      flex:1;
-      min-width:140px;
-      border:2px solid #000;
-      padding:10px;
-      text-align:center;
-      font-weight:bold;
-      background:#fafafa;
-    }
+.cardBox {
+  flex:1;
+  min-width:120px;
+  border:2px solid #000;
+  padding:10px;
+  text-align:center;
+  font-weight:bold;
+}
 
-    .profit { color:green; font-weight:bold; }
-    .loss { color:red; font-weight:bold; }
+.profit { color:green; }
+.loss { color:red; }
 
-    .tableWrapper {
-      overflow:auto;
-      max-height:400px;
-    }
+.tableWrapper { overflow:auto; max-height:400px; }
 
-    table {
-      width:100%;
-      border-collapse:collapse;
-    }
+table { width:100%; border-collapse:collapse; }
 
-    th, td {
-      border:2px solid #000;
-      padding:8px;
-      text-align:center;
-      white-space:nowrap;
-    }
+th, td {
+  border:2px solid #000;
+  padding:8px;
+  text-align:center;
+}
 
-    thead th {
-      position:sticky;
-      top:0;
-      background:#ddd;
-    }
-
-  </style>
+thead th {
+  position:sticky;
+  top:0;
+  background:#ddd;
+}
+</style>
 </head>
 
 <body>
@@ -74,8 +63,8 @@
 <div class="container">
 
 <div class="tabs">
-  <button id="tabForm" class="tab-btn active" onclick="showForm()">Add Trade</button>
-  <button id="tabDash" class="tab-btn" onclick="showDashboard()">Dashboard</button>
+<button class="tab-btn active" onclick="showForm()">Add Trade</button>
+<button class="tab-btn" onclick="showDashboard()">Dashboard</button>
 </div>
 
 <div id="form">
@@ -107,6 +96,9 @@
 
 <select id="filter" onchange="load()">
 <option value="all">All</option>
+<option value="today">Today</option>
+<option value="week">This Week</option>
+<option value="month">This Month</option>
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
 </select>
@@ -124,25 +116,10 @@
 
 <div style="display:flex; gap:10px; flex-wrap:wrap;">
 
-<div class="cardBox">
-Total Invested
-<div id="totalInvested">₹0</div>
-</div>
-
-<div class="cardBox">
-Profit
-<div id="totalProfit" class="profit">₹0</div>
-</div>
-
-<div class="cardBox">
-Loss
-<div id="totalLoss" class="loss">₹0</div>
-</div>
-
-<div class="cardBox">
-Win Rate %
-<div id="winRate">0%</div>
-</div>
+<div class="cardBox">Invested<div id="totalInvested">₹0</div></div>
+<div class="cardBox">Profit<div id="totalProfit" class="profit">₹0</div></div>
+<div class="cardBox">Loss<div id="totalLoss" class="loss">₹0</div></div>
+<div class="cardBox">Win %<div id="winRate">0%</div></div>
 
 </div>
 
@@ -168,14 +145,13 @@ Win Rate %
 </div>
 
 </div>
-
 </div>
 
 <script>
 
 const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
 
-// DATE FORMAT
+// DATE FORMAT FIX
 function formatDate(val){
   let d = new Date(val);
   if(isNaN(d)) return "";
@@ -193,7 +169,7 @@ function showDashboard(){
   load();
 }
 
-// ✅ RESTORED SAVE (WORKING)
+// ORIGINAL SAVE (WORKING)
 function save(){
 
 let data = {
@@ -213,10 +189,7 @@ fetch(API,{
   headers:{"Content-Type":"application/x-www-form-urlencoded"},
   body:"data="+encodeURIComponent(JSON.stringify(data))
 })
-.then(res=>res.text())
-.then(res=>{
-  alert("Saved ✅");
-});
+.then(()=>alert("Saved"));
 
 }
 
@@ -234,6 +207,10 @@ let totalLoss=0;
 let wins=0;
 let trades=0;
 
+let filterType = filter.value;
+let acc = accountFilter.value;
+let now = new Date();
+
 data.reverse();
 
 data.forEach(row=>{
@@ -248,6 +225,21 @@ if(!buyQty || !buyPrice) return;
 let invested = buyQty * buyPrice;
 let sellAmount = sellQty * sellPrice;
 let pnl = (sellQty && sellPrice) ? (sellAmount - invested) : 0;
+
+let accountVal = row[1];
+let date = new Date(row[4]);
+
+let match=true;
+
+if(filterType==="today") match = date.toDateString()===now.toDateString();
+if(filterType==="week") match = (now-date)/(1000*60*60*24)<=7;
+if(filterType==="month") match = date.getMonth()===now.getMonth();
+if(filterType==="profit") match = pnl>0;
+if(filterType==="loss") match = pnl<0;
+
+if(acc!=="all" && acc!==accountVal) match=false;
+
+if(!match) return;
 
 totalInvested += invested;
 
