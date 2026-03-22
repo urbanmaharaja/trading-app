@@ -12,11 +12,7 @@
       color:#000;
     }
 
-    h2 { 
-      text-align:center; 
-      font-size:24px;
-      margin-bottom:10px;
-    }
+    h2 { text-align:center; }
 
     .container {
       max-width:950px;
@@ -36,29 +32,30 @@
       border-radius:6px;
     }
 
-    .tabs { 
-      display:flex; 
-      gap:10px;
-      margin-bottom:10px; 
-    }
+    .tabs { display:flex; gap:10px; }
+    .tab-btn { flex:1; padding:12px; background:#ccc; font-weight:bold; }
+    .active { background:#000; color:white; }
 
-    .tab-btn { 
-      flex:1; 
-      padding:12px; 
-      background:#ccc; 
-      font-weight:bold;
+    .filters { display:flex; gap:10px; flex-wrap:wrap; }
+
+    .cardBox {
+      flex:1;
+      min-width:140px;
       border:2px solid #000;
+      padding:10px;
+      text-align:center;
+      font-weight:bold;
+      background:#fafafa;
     }
 
-    .active { 
-      background:#000; 
-      color:white; 
-    }
+    .profit { color:green; font-weight:bold; }
+    .loss { color:red; font-weight:bold; }
+
+    .tableWrapper { overflow-x:auto; }
 
     table {
       width:100%;
       border-collapse:collapse;
-      margin-top:10px;
       font-size:14px;
     }
 
@@ -66,24 +63,22 @@
       border:2px solid #000;
       padding:8px;
       text-align:center;
+      white-space:nowrap;
     }
 
-    th { 
-      background:#ddd; 
-      font-size:15px;
+    th { background:#ddd; }
+
+    /* 🧊 FREEZE FIRST COLUMN */
+    th:first-child, td:first-child {
+      position:sticky;
+      left:0;
+      background:white;
+      z-index:2;
     }
 
-    .profit { color:green; font-weight:bold; }
-    .loss { color:red; font-weight:bold; }
-
-    .filters {
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .filters select {
-      flex:1;
+    /* 👁️ BIG FONT MODE */
+    .big {
+      font-size:20px;
     }
 
   </style>
@@ -140,9 +135,9 @@
 <option value="month">This Month</option>
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
+<option value="open">Current Position</option> <!-- NEW -->
 </select>
 
-<!-- ✅ NEW ACCOUNT FILTER -->
 <select id="accountFilter" onchange="load()">
 <option value="all">All Accounts</option>
 <option value="Zerodha">Zerodha</option>
@@ -150,12 +145,38 @@
 <option value="Kotak">Kotak</option>
 </select>
 
+<button onclick="toggleFont()">Big Font</button>
+
 </div>
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
-<h3 id="total"></h3>
+<!-- SUMMARY -->
+<div id="summary" style="display:flex; gap:10px; flex-wrap:wrap;">
 
+  <div class="cardBox">
+    Total Invested
+    <div id="totalInvested">₹0</div>
+  </div>
+
+  <div class="cardBox">
+    Total P&L
+    <div id="totalPNL">₹0</div>
+  </div>
+
+  <div class="cardBox">
+    Profit
+    <div id="totalProfit" class="profit">₹0</div>
+  </div>
+
+  <div class="cardBox">
+    Loss
+    <div id="totalLoss" class="loss">₹0</div>
+  </div>
+
+</div>
+
+<div class="tableWrapper">
 <table>
 <thead>
 <tr>
@@ -176,6 +197,7 @@
 </thead>
 <tbody id="rows"></tbody>
 </table>
+</div>
 
 </div>
 
@@ -187,16 +209,13 @@ const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17
 
 let filteredData = [];
 
-// Default dates
 let today = new Date().toISOString().split("T")[0];
 buyDate.value = today;
 sellDate.value = today;
 
-// Auto mapping
 stockName.oninput = () => symbol.value = "NSE:"+stockName.value.toUpperCase();
 symbol.oninput = () => stockName.value = symbol.value.replace("NSE:","");
 
-// Tabs
 function showForm(){
   form.style.display="block";
   dashboard.style.display="none";
@@ -212,7 +231,10 @@ function showDashboard(){
   load();
 }
 
-// Save (UNCHANGED)
+function toggleFont(){
+  document.body.classList.toggle("big");
+}
+
 function save(){
 
 let bQty = Number(buyQty.value);
@@ -267,22 +289,19 @@ fetch(API,{
 
 }
 
-// Format date
 function formatDate(d){
-  let dt = new Date(d);
-  return dt.toLocaleDateString("en-GB");
+  return new Date(d).toLocaleDateString("en-GB");
 }
 
-// Dashboard
 function load(){
 
 fetch(API)
 .then(res=>res.json())
 .then(data=>{
 
-let totalVal = 0;
-let html = "";
-filteredData = [];
+let totalVal=0, totalInvested=0, totalProfit=0, totalLoss=0;
+let html="";
+filteredData=[];
 
 let filterType = filter.value;
 let accountType = accountFilter.value;
@@ -294,41 +313,37 @@ data.forEach(row=>{
 
 let date = new Date(row[4]);
 let pnl = Number(row[12]||0);
-let account = row[1]; // ✅ account column
+let account = row[1];
+let buyQty = Number(row[5]||0);
+let sellQty = Number(row[9]||0);
 
-let match = true;
+let match=true;
 
-// Date filters
-if(filterType==="today"){
-  match = date.toDateString() === now.toDateString();
-}
-if(filterType==="week"){
-  match = (now-date)/(1000*60*60*24) <= 7;
-}
-if(filterType==="month"){
-  match = date.getMonth()===now.getMonth();
-}
-if(filterType==="profit"){
-  match = pnl > 0;
-}
-if(filterType==="loss"){
-  match = pnl < 0;
-}
+// filters
+if(filterType==="today") match = date.toDateString()===now.toDateString();
+if(filterType==="week") match = (now-date)/(1000*60*60*24)<=7;
+if(filterType==="month") match = date.getMonth()===now.getMonth();
+if(filterType==="profit") match = pnl>0;
+if(filterType==="loss") match = pnl<0;
 
-// ✅ ACCOUNT FILTER
-if(accountType !== "all"){
-  if(account !== accountType){
-    match = false;
-  }
-}
+// ✅ CURRENT POSITION
+if(filterType==="open") match = buyQty > sellQty;
+
+// account
+if(accountType!=="all" && account!==accountType) match=false;
 
 if(!match) return;
 
+let invested = Number(row[7]||0);
+
+totalInvested += invested;
+totalVal += pnl;
+if(pnl>0) totalProfit+=pnl;
+if(pnl<0) totalLoss+=pnl;
+
 filteredData.push({stock:row[2], pnl});
 
-totalVal += pnl;
-
-let pnlClass = pnl >= 0 ? "profit" : "loss";
+let pnlClass = pnl>=0 ? "profit":"loss";
 
 html += `<tr>
 <td>${row[2]}</td>
@@ -348,33 +363,22 @@ html += `<tr>
 
 });
 
-total.innerText = "Total P&L: ₹" + totalVal;
+totalPNL.innerText = "₹"+totalVal;
+totalInvested.innerText = "₹"+totalInvested;
+totalProfit.innerText = "₹"+totalProfit;
+totalLoss.innerText = "₹"+totalLoss;
+
 rows.innerHTML = html;
 
 });
 
 }
 
-// WhatsApp (unchanged)
 function sendWhatsApp(){
-
-if(filteredData.length===0){
-  alert("No data");
-  return;
-}
-
-let text = "Trading Summary\n\n";
-let total = 0;
-
-filteredData.forEach(d=>{
-  text += `${d.stock} ₹${d.pnl}\n`;
-  total += d.pnl;
-});
-
-text += `\nTotal: ₹${total}`;
-
+let text="Trading Summary\n\n", total=0;
+filteredData.forEach(d=>{ text+=`${d.stock} ₹${d.pnl}\n`; total+=d.pnl; });
+text+=`\nTotal: ₹${total}`;
 window.open("https://wa.me/?text="+encodeURIComponent(text));
-
 }
 
 </script>
