@@ -26,20 +26,6 @@ input, select, button {
   border:2px solid #000;
 }
 
-.filters { display:flex; gap:10px; flex-wrap:wrap; }
-
-.cardBox {
-  flex:1;
-  min-width:120px;
-  border:2px solid #000;
-  padding:10px;
-  text-align:center;
-  font-weight:bold;
-}
-
-.profit { color:green; }
-.loss { color:red; }
-
 .tableWrapper { overflow:auto; max-height:400px; }
 
 table { width:100%; border-collapse:collapse; }
@@ -67,6 +53,7 @@ thead th {
 <button class="tab-btn" onclick="showDashboard()">Dashboard</button>
 </div>
 
+<!-- FORM -->
 <div id="form">
 
 <select id="account">
@@ -90,38 +77,8 @@ thead th {
 
 </div>
 
+<!-- DASHBOARD -->
 <div id="dashboard" style="display:none;">
-
-<div class="filters">
-
-<select id="filter" onchange="load()">
-<option value="all">All</option>
-<option value="today">Today</option>
-<option value="week">This Week</option>
-<option value="month">This Month</option>
-<option value="profit">Profit</option>
-<option value="loss">Loss</option>
-</select>
-
-<select id="accountFilter" onchange="load()">
-<option value="all">All Accounts</option>
-<option value="Zerodha">Zerodha</option>
-<option value="Groww">Groww</option>
-<option value="Kotak">Kotak</option>
-</select>
-
-</div>
-
-<button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
-
-<div style="display:flex; gap:10px; flex-wrap:wrap;">
-
-<div class="cardBox">Invested<div id="totalInvested">₹0</div></div>
-<div class="cardBox">Profit<div id="totalProfit" class="profit">₹0</div></div>
-<div class="cardBox">Loss<div id="totalLoss" class="loss">₹0</div></div>
-<div class="cardBox">Win %<div id="winRate">0%</div></div>
-
-</div>
 
 <div class="tableWrapper">
 <table>
@@ -145,19 +102,21 @@ thead th {
 </div>
 
 </div>
+
 </div>
 
 <script>
 
 const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
 
-// DATE FORMAT FIX
+// DATE FORMAT
 function formatDate(val){
   let d = new Date(val);
   if(isNaN(d)) return "";
   return d.toLocaleDateString("en-GB");
 }
 
+// SWITCH TABS
 function showForm(){
   form.style.display="block";
   dashboard.style.display="none";
@@ -169,19 +128,23 @@ function showDashboard(){
   load();
 }
 
-// ORIGINAL SAVE (WORKING)
+// ✅ SAVE (FULL DATA FIXED)
 function save(){
 
 let data = {
-  account:account.value,
-  stockName:stockName.value,
-  symbol:symbol.value,
-  buyDate:buyDate.value,
-  buyQty:buyQty.value,
-  buyPrice:buyPrice.value,
-  sellDate:sellDate.value,
-  sellQty:sellQty.value,
-  sellPrice:sellPrice.value
+  month: new Date().toLocaleString('en-US',{month:'short'}),
+  account: account.value,
+  stockName: stockName.value,
+  symbol: symbol.value,
+  buyDate: buyDate.value,
+  buyQty: Number(buyQty.value),
+  buyPrice: Number(buyPrice.value),
+  invested: Number(buyQty.value) * Number(buyPrice.value),
+  sellDate: sellDate.value,
+  sellQty: Number(sellQty.value),
+  sellPrice: Number(sellPrice.value),
+  sellAmount: Number(sellQty.value) * Number(sellPrice.value),
+  net: (Number(sellQty.value) * Number(sellPrice.value)) - (Number(buyQty.value) * Number(buyPrice.value))
 };
 
 fetch(API,{
@@ -189,11 +152,24 @@ fetch(API,{
   headers:{"Content-Type":"application/x-www-form-urlencoded"},
   body:"data="+encodeURIComponent(JSON.stringify(data))
 })
-.then(()=>alert("Saved"));
+.then(res=>res.text())
+.then(()=>{
+
+  alert("Saved ✅");
+
+  // ✅ CLEAR FORM AFTER OK
+  stockName.value="";
+  symbol.value="";
+  buyQty.value="";
+  buyPrice.value="";
+  sellQty.value="";
+  sellPrice.value="";
+  
+});
 
 }
 
-// DASHBOARD
+// ✅ LOAD DASHBOARD (SIMPLE + CORRECT)
 function load(){
 
 fetch(API)
@@ -201,15 +177,6 @@ fetch(API)
 .then(data=>{
 
 let html="";
-let totalInvested=0;
-let totalProfit=0;
-let totalLoss=0;
-let wins=0;
-let trades=0;
-
-let filterType = filter.value;
-let acc = accountFilter.value;
-let now = new Date();
 
 data.reverse();
 
@@ -220,35 +187,11 @@ let buyPrice = Number(row[6]) || 0;
 let sellQty = Number(row[9]) || 0;
 let sellPrice = Number(row[10]) || 0;
 
-if(!buyQty || !buyPrice) return;
-
 let invested = buyQty * buyPrice;
 let sellAmount = sellQty * sellPrice;
-let pnl = (sellQty && sellPrice) ? (sellAmount - invested) : 0;
+let pnl = sellAmount - invested;
 
-let accountVal = row[1];
-let date = new Date(row[4]);
-
-let match=true;
-
-if(filterType==="today") match = date.toDateString()===now.toDateString();
-if(filterType==="week") match = (now-date)/(1000*60*60*24)<=7;
-if(filterType==="month") match = date.getMonth()===now.getMonth();
-if(filterType==="profit") match = pnl>0;
-if(filterType==="loss") match = pnl<0;
-
-if(acc!=="all" && acc!==accountVal) match=false;
-
-if(!match) return;
-
-totalInvested += invested;
-
-if(pnl > 0){ totalProfit += pnl; wins++; }
-if(pnl < 0){ totalLoss += pnl; }
-
-if(pnl !== 0) trades++;
-
-let pnlClass = pnl>=0 ? "profit":"loss";
+let pnlClass = pnl >= 0 ? "color:green" : "color:red";
 
 html += `<tr>
 <td>${row[1]}</td>
@@ -261,26 +204,15 @@ html += `<tr>
 <td>${Math.round(sellQty)}</td>
 <td>${sellPrice}</td>
 <td>${Math.round(sellAmount)}</td>
-<td class="${pnlClass}">${Math.round(pnl)}</td>
+<td style="${pnlClass}">${Math.round(pnl)}</td>
 </tr>`;
 
 });
-
-let winRate = trades ? ((wins/trades)*100).toFixed(1) : 0;
-
-totalInvested.innerText = "₹"+Math.round(totalInvested);
-totalProfit.innerText = "₹"+Math.round(totalProfit);
-totalLoss.innerText = "₹"+Math.round(totalLoss);
-winRate.innerText = winRate+"%";
 
 rows.innerHTML = html;
 
 });
 
-}
-
-function sendWhatsApp(){
-window.open("https://wa.me/?text=Trading Summary");
 }
 
 </script>
