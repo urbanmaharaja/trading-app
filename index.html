@@ -51,7 +51,11 @@
     .profit { color:green; font-weight:bold; }
     .loss { color:red; font-weight:bold; }
 
-    .tableWrapper { overflow-x:auto; }
+    .tableWrapper { 
+      overflow-x:auto; 
+      max-height:400px;
+      overflow-y:auto;
+    }
 
     table {
       width:100%;
@@ -68,15 +72,14 @@
 
     th { background:#ddd; }
 
-    /* 🧊 FREEZE FIRST COLUMN */
-    th:first-child, td:first-child {
-      position:sticky;
-      left:0;
-      background:white;
-      z-index:2;
+    /* ✅ FREEZE HEADER */
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #ddd;
+      z-index: 3;
     }
 
-    /* 👁️ BIG FONT MODE */
     .big {
       font-size:20px;
     }
@@ -135,7 +138,7 @@
 <option value="month">This Month</option>
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
-<option value="open">Current Position</option> <!-- NEW -->
+<option value="open">Current Position</option>
 </select>
 
 <select id="accountFilter" onchange="load()">
@@ -152,16 +155,11 @@
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
 <!-- SUMMARY -->
-<div id="summary" style="display:flex; gap:10px; flex-wrap:wrap;">
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
 
   <div class="cardBox">
     Total Invested
     <div id="totalInvested">₹0</div>
-  </div>
-
-  <div class="cardBox">
-    Total P&L
-    <div id="totalPNL">₹0</div>
   </div>
 
   <div class="cardBox">
@@ -299,7 +297,7 @@ fetch(API)
 .then(res=>res.json())
 .then(data=>{
 
-let totalVal=0, totalInvested=0, totalProfit=0, totalLoss=0;
+let totalInvestedVal=0, totalProfit=0, totalLoss=0;
 let html="";
 filteredData=[];
 
@@ -319,25 +317,20 @@ let sellQty = Number(row[9]||0);
 
 let match=true;
 
-// filters
 if(filterType==="today") match = date.toDateString()===now.toDateString();
 if(filterType==="week") match = (now-date)/(1000*60*60*24)<=7;
 if(filterType==="month") match = date.getMonth()===now.getMonth();
 if(filterType==="profit") match = pnl>0;
 if(filterType==="loss") match = pnl<0;
-
-// ✅ CURRENT POSITION
 if(filterType==="open") match = buyQty > sellQty;
 
-// account
 if(accountType!=="all" && account!==accountType) match=false;
 
 if(!match) return;
 
 let invested = Number(row[7]||0);
 
-totalInvested += invested;
-totalVal += pnl;
+totalInvestedVal += invested;
 if(pnl>0) totalProfit+=pnl;
 if(pnl<0) totalLoss+=pnl;
 
@@ -363,8 +356,7 @@ html += `<tr>
 
 });
 
-totalPNL.innerText = "₹"+totalVal;
-totalInvested.innerText = "₹"+totalInvested;
+totalInvested.innerText = "₹"+totalInvestedVal;
 totalProfit.innerText = "₹"+totalProfit;
 totalLoss.innerText = "₹"+totalLoss;
 
