@@ -74,12 +74,11 @@
 <div class="container">
 
 <div class="tabs">
-  <button id="tabForm" class="tab-btn active" onclick="showForm()">Add Trade</button>
-  <button id="tabDash" class="tab-btn" onclick="showDashboard()">Dashboard</button>
+  <button class="tab-btn active" onclick="showForm()">Add Trade</button>
+  <button class="tab-btn" onclick="showDashboard()">Dashboard</button>
 </div>
 
 <div id="form">
-
 <select id="account">
 <option>Zerodha</option>
 <option>Groww</option>
@@ -98,18 +97,13 @@
 <input id="sellPrice" placeholder="Sell Price">
 
 <button onclick="save()">Save</button>
-
 </div>
 
 <div id="dashboard" style="display:none;">
 
 <div class="filters">
-
 <select id="filter" onchange="load()">
 <option value="all">All</option>
-<option value="today">Today</option>
-<option value="week">This Week</option>
-<option value="month">This Month</option>
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
 </select>
@@ -120,33 +114,15 @@
 <option value="Groww">Groww</option>
 <option value="Kotak">Kotak</option>
 </select>
-
 </div>
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-
-<div class="cardBox">
-Total Invested
-<div id="totalInvested">₹0</div>
-</div>
-
-<div class="cardBox">
-Profit
-<div id="totalProfit" class="profit">₹0</div>
-</div>
-
-<div class="cardBox">
-Loss
-<div id="totalLoss" class="loss">₹0</div>
-</div>
-
-<div class="cardBox">
-Win Rate %
-<div id="winRate">0%</div>
-</div>
-
+<div class="cardBox">Invested<div id="totalInvested">₹0</div></div>
+<div class="cardBox">Profit<div id="totalProfit" class="profit">₹0</div></div>
+<div class="cardBox">Loss<div id="totalLoss" class="loss">₹0</div></div>
+<div class="cardBox">Win %<div id="winRate">0%</div></div>
 </div>
 
 <div class="tableWrapper">
@@ -171,24 +147,16 @@ Win Rate %
 </div>
 
 </div>
-
 </div>
 
 <script>
 
 const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
 
-// ✅ FORMAT DATE
 function formatDate(val){
-  if(!val) return "";
   let d = new Date(val);
-  if(isNaN(d)) return val;
-
-  let day = String(d.getDate()).padStart(2,'0');
-  let month = String(d.getMonth()+1).padStart(2,'0');
-  let year = d.getFullYear();
-
-  return `${day}-${month}-${year}`;
+  if(isNaN(d)) return "";
+  return d.toLocaleDateString("en-GB");
 }
 
 function showForm(){
@@ -202,10 +170,6 @@ function showDashboard(){
   load();
 }
 
-function save(){
-  alert("Saved");
-}
-
 function load(){
 
 fetch(API)
@@ -213,49 +177,30 @@ fetch(API)
 .then(data=>{
 
 let html="";
-let totalInvestedVal=0;
+let totalInvested=0;
 let totalProfit=0;
 let totalLoss=0;
 let wins=0;
-let totalTrades=0;
-
-let filterType = filter.value;
-let acc = accountFilter.value;
-let now = new Date();
+let trades=0;
 
 data.reverse();
 
 data.forEach(row=>{
 
-// ✅ SAFE NUMBERS
 let buyQty = Number(row[5]) || 0;
 let buyPrice = Number(row[6]) || 0;
 let sellQty = Number(row[9]) || 0;
 let sellPrice = Number(row[10]) || 0;
 
+if(!buyQty || !buyPrice) return; // skip invalid
+
 let invested = buyQty * buyPrice;
 let sellAmount = sellQty * sellPrice;
-let pnl = sellAmount - invested;
 
-// DEBUG (optional)
-console.log("PNL:", pnl);
+// ✅ ONLY calculate when sell exists
+let pnl = (sellQty && sellPrice) ? (sellAmount - invested) : 0;
 
-let accountVal = row[1];
-let date = new Date(row[4]);
-
-let match=true;
-
-if(filterType==="today") match = date.toDateString()===now.toDateString();
-if(filterType==="week") match = (now-date)/(1000*60*60*24)<=7;
-if(filterType==="month") match = date.getMonth()===now.getMonth();
-if(filterType==="profit") match = pnl>0;
-if(filterType==="loss") match = pnl<0;
-
-if(acc!=="all" && acc!==accountVal) match=false;
-
-if(!match) return;
-
-totalInvestedVal += invested;
+totalInvested += invested;
 
 if(pnl > 0){
   totalProfit += pnl;
@@ -265,32 +210,32 @@ if(pnl < 0){
   totalLoss += pnl;
 }
 
-totalTrades++;
+if(pnl !== 0) trades++;
 
-let pnlClass = pnl>=0 ? "profit":"loss";
+let pnlClass = pnl >= 0 ? "profit" : "loss";
 
 html += `<tr>
 <td>${row[1]}</td>
 <td>${row[2]}</td>
 <td>${formatDate(row[4])}</td>
-<td>${buyQty}</td>
+<td>${Math.round(buyQty)}</td>
 <td>${buyPrice}</td>
-<td>${invested}</td>
+<td>${Math.round(invested)}</td>
 <td>${formatDate(row[8])}</td>
-<td>${sellQty}</td>
+<td>${Math.round(sellQty)}</td>
 <td>${sellPrice}</td>
-<td>${sellAmount}</td>
-<td class="${pnlClass}">${pnl.toFixed(0)}</td>
+<td>${Math.round(sellAmount)}</td>
+<td class="${pnlClass}">${Math.round(pnl)}</td>
 </tr>`;
 
 });
 
-let winRateVal = totalTrades ? ((wins/totalTrades)*100).toFixed(1) : 0;
+let winRate = trades ? ((wins/trades)*100).toFixed(1) : 0;
 
-totalInvested.innerText = "₹"+totalInvestedVal.toFixed(0);
-totalProfit.innerText = "₹"+totalProfit.toFixed(0);
-totalLoss.innerText = "₹"+totalLoss.toFixed(0);
-winRate.innerText = winRateVal + "%";
+totalInvested.innerText = "₹"+Math.round(totalInvested);
+totalProfit.innerText = "₹"+Math.round(totalProfit);
+totalLoss.innerText = "₹"+Math.round(totalLoss);
+winRate.innerText = winRate+"%";
 
 rows.innerHTML = html;
 
