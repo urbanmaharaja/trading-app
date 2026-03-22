@@ -74,11 +74,12 @@
 <div class="container">
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="showForm()">Add Trade</button>
-  <button class="tab-btn" onclick="showDashboard()">Dashboard</button>
+  <button id="tabForm" class="tab-btn active" onclick="showForm()">Add Trade</button>
+  <button id="tabDash" class="tab-btn" onclick="showDashboard()">Dashboard</button>
 </div>
 
 <div id="form">
+
 <select id="account">
 <option>Zerodha</option>
 <option>Groww</option>
@@ -97,11 +98,13 @@
 <input id="sellPrice" placeholder="Sell Price">
 
 <button onclick="save()">Save</button>
+
 </div>
 
 <div id="dashboard" style="display:none;">
 
 <div class="filters">
+
 <select id="filter" onchange="load()">
 <option value="all">All</option>
 <option value="profit">Profit</option>
@@ -114,15 +117,33 @@
 <option value="Groww">Groww</option>
 <option value="Kotak">Kotak</option>
 </select>
+
 </div>
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-<div class="cardBox">Invested<div id="totalInvested">₹0</div></div>
-<div class="cardBox">Profit<div id="totalProfit" class="profit">₹0</div></div>
-<div class="cardBox">Loss<div id="totalLoss" class="loss">₹0</div></div>
-<div class="cardBox">Win %<div id="winRate">0%</div></div>
+
+<div class="cardBox">
+Total Invested
+<div id="totalInvested">₹0</div>
+</div>
+
+<div class="cardBox">
+Profit
+<div id="totalProfit" class="profit">₹0</div>
+</div>
+
+<div class="cardBox">
+Loss
+<div id="totalLoss" class="loss">₹0</div>
+</div>
+
+<div class="cardBox">
+Win Rate %
+<div id="winRate">0%</div>
+</div>
+
 </div>
 
 <div class="tableWrapper">
@@ -147,12 +168,14 @@
 </div>
 
 </div>
+
 </div>
 
 <script>
 
 const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
 
+// DATE FORMAT
 function formatDate(val){
   let d = new Date(val);
   if(isNaN(d)) return "";
@@ -170,6 +193,34 @@ function showDashboard(){
   load();
 }
 
+// ✅ RESTORED SAVE (WORKING)
+function save(){
+
+let data = {
+  account:account.value,
+  stockName:stockName.value,
+  symbol:symbol.value,
+  buyDate:buyDate.value,
+  buyQty:buyQty.value,
+  buyPrice:buyPrice.value,
+  sellDate:sellDate.value,
+  sellQty:sellQty.value,
+  sellPrice:sellPrice.value
+};
+
+fetch(API,{
+  method:"POST",
+  headers:{"Content-Type":"application/x-www-form-urlencoded"},
+  body:"data="+encodeURIComponent(JSON.stringify(data))
+})
+.then(res=>res.text())
+.then(res=>{
+  alert("Saved ✅");
+});
+
+}
+
+// DASHBOARD
 function load(){
 
 fetch(API)
@@ -192,27 +243,20 @@ let buyPrice = Number(row[6]) || 0;
 let sellQty = Number(row[9]) || 0;
 let sellPrice = Number(row[10]) || 0;
 
-if(!buyQty || !buyPrice) return; // skip invalid
+if(!buyQty || !buyPrice) return;
 
 let invested = buyQty * buyPrice;
 let sellAmount = sellQty * sellPrice;
-
-// ✅ ONLY calculate when sell exists
 let pnl = (sellQty && sellPrice) ? (sellAmount - invested) : 0;
 
 totalInvested += invested;
 
-if(pnl > 0){
-  totalProfit += pnl;
-  wins++;
-}
-if(pnl < 0){
-  totalLoss += pnl;
-}
+if(pnl > 0){ totalProfit += pnl; wins++; }
+if(pnl < 0){ totalLoss += pnl; }
 
 if(pnl !== 0) trades++;
 
-let pnlClass = pnl >= 0 ? "profit" : "loss";
+let pnlClass = pnl>=0 ? "profit":"loss";
 
 html += `<tr>
 <td>${row[1]}</td>
