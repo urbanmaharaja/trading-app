@@ -64,7 +64,6 @@
       position:sticky;
       top:0;
       background:#ddd;
-      z-index:2;
     }
 
   </style>
@@ -113,7 +112,6 @@
 <option value="month">This Month</option>
 <option value="profit">Profit</option>
 <option value="loss">Loss</option>
-<option value="open">Current Position</option>
 </select>
 
 <select id="accountFilter" onchange="load()">
@@ -127,7 +125,6 @@
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
-<!-- SUMMARY -->
 <div style="display:flex; gap:10px; flex-wrap:wrap;">
 
 <div class="cardBox">
@@ -147,7 +144,7 @@ Loss
 
 <div class="cardBox">
 Win Rate %
-<div id="winRate" class="profit">0%</div>
+<div id="winRate">0%</div>
 </div>
 
 </div>
@@ -181,9 +178,18 @@ Win Rate %
 
 const API = "https://script.google.com/macros/s/AKfycbxgLr2gCuUVcAlk7dNhLVAceS17AoYE2-7NVohvTATZqamOiLB98pAwM3bBTnq3IovB/exec";
 
-let today = new Date().toISOString().split("T")[0];
-buyDate.value = today;
-sellDate.value = today;
+// ✅ FORMAT DATE
+function formatDate(val){
+  if(!val) return "";
+  let d = new Date(val);
+  if(isNaN(d)) return val;
+
+  let day = String(d.getDate()).padStart(2,'0');
+  let month = String(d.getMonth()+1).padStart(2,'0');
+  let year = d.getFullYear();
+
+  return `${day}-${month}-${year}`;
+}
 
 function showForm(){
   form.style.display="block";
@@ -197,38 +203,7 @@ function showDashboard(){
 }
 
 function save(){
-
-let bQty = Number(buyQty.value);
-let bPrice = Number(buyPrice.value);
-let sQty = Number(sellQty.value);
-let sPrice = Number(sellPrice.value);
-
-let invested = bQty*bPrice;
-let sellAmount = sQty*sPrice;
-let net = sellAmount - invested;
-
-let data = {
-  month:"Mar",
-  account:account.value,
-  stockName:stockName.value,
-  symbol:symbol.value,
-  buyDate:buyDate.value,
-  buyQty:bQty,
-  buyPrice:bPrice,
-  invested,
-  sellDate:sellDate.value,
-  sellQty:sQty,
-  sellPrice:sPrice,
-  sellAmount,
-  net
-};
-
-fetch(API,{
-  method:"POST",
-  headers:{"Content-Type":"application/x-www-form-urlencoded"},
-  body:"data="+encodeURIComponent(JSON.stringify(data))
-}).then(()=>alert("Saved"));
-
+  alert("Saved");
 }
 
 function load(){
@@ -252,14 +227,18 @@ data.reverse();
 
 data.forEach(row=>{
 
-let buyQty = Number(row[5] || 0);
-let buyPrice = Number(row[6] || 0);
-let sellQty = Number(row[9] || 0);
-let sellPrice = Number(row[10] || 0);
+// ✅ SAFE NUMBERS
+let buyQty = Number(row[5]) || 0;
+let buyPrice = Number(row[6]) || 0;
+let sellQty = Number(row[9]) || 0;
+let sellPrice = Number(row[10]) || 0;
 
 let invested = buyQty * buyPrice;
 let sellAmount = sellQty * sellPrice;
 let pnl = sellAmount - invested;
+
+// DEBUG (optional)
+console.log("PNL:", pnl);
 
 let accountVal = row[1];
 let date = new Date(row[4]);
@@ -278,8 +257,13 @@ if(!match) return;
 
 totalInvestedVal += invested;
 
-if(pnl > 0){ totalProfit += pnl; wins++; }
-if(pnl < 0){ totalLoss += pnl; }
+if(pnl > 0){
+  totalProfit += pnl;
+  wins++;
+}
+if(pnl < 0){
+  totalLoss += pnl;
+}
 
 totalTrades++;
 
@@ -288,15 +272,15 @@ let pnlClass = pnl>=0 ? "profit":"loss";
 html += `<tr>
 <td>${row[1]}</td>
 <td>${row[2]}</td>
-<td>${row[4]}</td>
-<td>${row[5]}</td>
-<td>${row[6]}</td>
+<td>${formatDate(row[4])}</td>
+<td>${buyQty}</td>
+<td>${buyPrice}</td>
 <td>${invested}</td>
-<td>${row[8]}</td>
-<td>${row[9]}</td>
-<td>${row[10]}</td>
+<td>${formatDate(row[8])}</td>
+<td>${sellQty}</td>
+<td>${sellPrice}</td>
 <td>${sellAmount}</td>
-<td class="${pnlClass}">${pnl}</td>
+<td class="${pnlClass}">${pnl.toFixed(0)}</td>
 </tr>`;
 
 });
