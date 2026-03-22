@@ -127,6 +127,7 @@
 
 <button onclick="sendWhatsApp()">Send WhatsApp Summary</button>
 
+<!-- SUMMARY -->
 <div style="display:flex; gap:10px; flex-wrap:wrap;">
 
 <div class="cardBox">
@@ -142,6 +143,11 @@ Profit
 <div class="cardBox">
 Loss
 <div id="totalLoss" class="loss">₹0</div>
+</div>
+
+<div class="cardBox">
+Win Rate %
+<div id="winRate" class="profit">0%</div>
 </div>
 
 </div>
@@ -235,6 +241,8 @@ let html="";
 let totalInvestedVal=0;
 let totalProfit=0;
 let totalLoss=0;
+let wins=0;
+let totalTrades=0;
 
 let filterType = filter.value;
 let acc = accountFilter.value;
@@ -244,8 +252,15 @@ data.reverse();
 
 data.forEach(row=>{
 
-let pnl = Number(row[12]||0);
-let invested = Number(row[7]||0);
+let buyQty = Number(row[5] || 0);
+let buyPrice = Number(row[6] || 0);
+let sellQty = Number(row[9] || 0);
+let sellPrice = Number(row[10] || 0);
+
+let invested = buyQty * buyPrice;
+let sellAmount = sellQty * sellPrice;
+let pnl = sellAmount - invested;
+
 let accountVal = row[1];
 let date = new Date(row[4]);
 
@@ -263,9 +278,10 @@ if(!match) return;
 
 totalInvestedVal += invested;
 
-// ✅ FIXED PROFIT / LOSS
-if(pnl > 0) totalProfit += pnl;
-if(pnl < 0) totalLoss += pnl;
+if(pnl > 0){ totalProfit += pnl; wins++; }
+if(pnl < 0){ totalLoss += pnl; }
+
+totalTrades++;
 
 let pnlClass = pnl>=0 ? "profit":"loss";
 
@@ -275,19 +291,22 @@ html += `<tr>
 <td>${row[4]}</td>
 <td>${row[5]}</td>
 <td>${row[6]}</td>
-<td>${row[7]}</td>
+<td>${invested}</td>
 <td>${row[8]}</td>
 <td>${row[9]}</td>
 <td>${row[10]}</td>
-<td>${row[11]}</td>
+<td>${sellAmount}</td>
 <td class="${pnlClass}">${pnl}</td>
 </tr>`;
 
 });
 
-totalInvested.innerText = "₹"+totalInvestedVal;
-totalProfit.innerText = "₹"+totalProfit;
-totalLoss.innerText = "₹"+totalLoss;
+let winRateVal = totalTrades ? ((wins/totalTrades)*100).toFixed(1) : 0;
+
+totalInvested.innerText = "₹"+totalInvestedVal.toFixed(0);
+totalProfit.innerText = "₹"+totalProfit.toFixed(0);
+totalLoss.innerText = "₹"+totalLoss.toFixed(0);
+winRate.innerText = winRateVal + "%";
 
 rows.innerHTML = html;
 
